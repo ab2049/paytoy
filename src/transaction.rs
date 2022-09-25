@@ -21,10 +21,21 @@ pub enum TranType {
 /// The input transaction
 #[derive(Debug, PartialEq, Clone)]
 pub struct Transaction {
+    pub tran_type: TranType,
     pub client: ClientId,
     pub tx: TxId,
-    pub tran_type: TranType,
     pub amount: Option<Decimal>,
+}
+
+impl Transaction {
+    pub fn new(tran_type: TranType, client: ClientId, tx: TxId, amount: Option<Decimal>) -> Self {
+        Self {
+            client,
+            tx,
+            tran_type,
+            amount,
+        }
+    }
 }
 
 /// Respect the decimal point limit
@@ -94,12 +105,12 @@ impl<'de> Deserialize<'de> for Transaction {
         }?;
 
         // Return the actual contract
-        Ok(Transaction {
-            client: inner.client,
-            tx: inner.tx,
-            tran_type: inner.tran_type,
-            amount: amount,
-        })
+        Ok(Transaction::new(
+            inner.tran_type,
+            inner.client,
+            inner.tx,
+            amount,
+        ))
     }
 }
 
@@ -132,12 +143,7 @@ fn test_deserialize_with_amount() -> Result<(), Error> {
     use csv::StringRecord;
     use rust_decimal_macros::dec;
 
-    let expected = Transaction {
-        client: ClientId(1),
-        tx: TxId(2),
-        tran_type: TranType::Deposit,
-        amount: Some(dec!(1.1)),
-    };
+    let expected = Transaction::new(TranType::Deposit, ClientId(1), TxId(2), Some(dec!(1.1)));
 
     let h = StringRecord::from(vec!["type", "client", "tx", "amount"]);
     let t = &StringRecord::from_iter("deposit,1,2,1.1".split(","))
@@ -168,12 +174,7 @@ fn test_deserialize_with_amount() -> Result<(), Error> {
 fn test_deserialize_no_amount() -> Result<(), Error> {
     use csv::StringRecord;
 
-    let expected = Transaction {
-        client: ClientId(1),
-        tx: TxId(2),
-        tran_type: TranType::Dispute,
-        amount: None,
-    };
+    let expected = Transaction::new(TranType::Dispute, ClientId(1), TxId(2), None);
 
     let h = StringRecord::from(vec!["type", "client", "tx", "amount"]);
     let t =
