@@ -1,0 +1,27 @@
+name: Paytoy Linux
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Update system package info
+      run: sudo apt-get update
+    - name: Install Rust Stable
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        default: true
+        profile: minimal
+    - name: Cargo build
+      run: cargo build
+    - name: Cargo test
+      run: cargo test
