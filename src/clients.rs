@@ -2,6 +2,7 @@ use anyhow::{bail, Error};
 
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 
 use crate::balance::Balance;
 use crate::ids::ClientId;
@@ -39,6 +40,19 @@ impl Clients {
     }
 }
 
+impl Display for Clients {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        // get a stable order for the clients so we can compare test data
+        let mut keys: Vec<ClientId> = self.balance_map.keys().cloned().collect();
+        keys.sort();
+        for client in keys {
+            let balance = self.balance_map.get(&client).unwrap();
+            writeln!(f, "{},{}", client.id(), balance)?
+        }
+        Ok(())
+    }
+}
+
 #[test]
 fn test_process() -> Result<(), Error> {
     use crate::ids::TxId;
@@ -73,6 +87,12 @@ fn test_process() -> Result<(), Error> {
     let t = Transaction::new(TranType::Chargeback, ClientId(99), TxId(2), None);
     assert!(clients.process(t).is_ok());
     assert!(clients.balance_map.get(&ClientId(99)).is_none());
+
+    let d = clients.to_string();
+    let expected = "1,1.00,0,1.00,false
+2,0.00,0,0,false
+";
+    assert_eq!(d, expected);
 
     Ok(())
 }
