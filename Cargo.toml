@@ -7,6 +7,9 @@ edition = "2021"
 anyhow = "1.0.65"
 clap = { version = "3.2.22", features = ["derive"] } 
 csv = "1.1.6"
+futures = "0.3.24"
+num_cpus = "1.13.1"
 serde = { version = "1.0.145", features = ["derive"] } 
 rust_decimal = { version = "1.26", features = ["serde-with-str"] }
 rust_decimal_macros = "1.26"
+tokio = { version = "1.21.1", features = ["fs", "io-std", "io-util", "macros", "rt-multi-thread", "sync" ] }

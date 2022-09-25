@@ -38,6 +38,19 @@ impl Clients {
             (_, _, Some(_)) => bail!("Invalid transaction, was not expeciting amount for {:?}", t),
         }
     }
+
+    pub fn combine(&mut self, other: Clients) -> Result<(), Error> {
+        for (client, balance) in other.balance_map {
+            let e = self.balance_map.entry(client);
+            match e {
+                Entry::Occupied(_) => bail!("client shards should not overlap"),
+                Entry::Vacant(e) => {
+                    e.insert(balance);
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 impl Display for Clients {
