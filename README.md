@@ -19,3 +19,6 @@ Simple example payments engine.
 
 * Deposits and withdrawals of zero amounts are invalid input
 
+* Duplicate transaction ids for deposits or withdrawals are invalid input
+
+* Unknown transaction ids for dispute, resolve, chargebacks are errors from the payment partner and will be ignored
