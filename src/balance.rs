@@ -236,7 +236,6 @@ fn test_dispute_withdrawal() -> Result<(), Error> {
     Ok(())
 }
 
-
 #[test]
 fn test_chargeback_deposit() -> Result<(), Error> {
     use rust_decimal_macros::dec;
@@ -300,7 +299,6 @@ fn test_chargeback_withdrawal() -> Result<(), Error> {
 
     Ok(())
 }
-
 
 #[test]
 fn test_deposit_withdraw() -> Result<(), Error> {

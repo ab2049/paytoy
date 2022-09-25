@@ -1,5 +1,5 @@
 # Paytoy
-Simple example payments engine.
+Simple example payments engine. Takes a file of transactions and outputs client balances taking into account deposits, withdrawals, disputes, resolutions and chargebacks.
 
 ## Assumptions
 
@@ -26,6 +26,7 @@ Simple example payments engine.
 * Unknown transaction ids for dispute, resolve, chargebacks are errors from the payment partner and will be ignored
 
 ## Design choices
+Although this toy reads from a simple CSV file, its designed with tokio tasks sharded by mod of client id as an example of how one might structure if was running for real and reading from multiple input streams and then dispatching to sharded client processing.
 
 Using integer math for precision as binary floating point can't represent numbers like 0.0001 exactly. 
 
@@ -34,6 +35,12 @@ Each shard handles multiple clients and can use regular unlocked maps as no othe
 For simplicity using anyhow::Error and bail!. In this was a real payment library would likely use thiserror::Error instead.
 
 Using storage of transactions that could be reverse in memory for simplicity vs attempting something like LevelDB.
+
+## Safety and Robustness
+
+Check the dependencies for known vulns with cargo-audit.  None at time of writing
+
+Errors are checked.  Errors cause the program to exit without outputing new client balances
 
 ## Efficiency
 
@@ -47,3 +54,10 @@ In a real system one may have a larger TransactionId and use something like shar
 
 In a real system with a clock and transaction timestampds, if some clients or payment partners had a time limit on reversal then the solution could be made more efficient by pruning stored state once clock advances past the deadline(s) for retention for a balance.
 
+## Maintainability
+
+Automated tests,  easy to add new test cases if a regression is found.
+
+Uses the type system (e.g. newtypes, enums) to detect problems at compile time and reduce possible coding errors by maintainers.
+
+Single threaded form is simpler, pretty easy to remove tokio changes if desired as they are contained to main
