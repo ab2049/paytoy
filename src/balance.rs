@@ -74,29 +74,29 @@ impl Balance {
         Ok(())
     }
 
-    // pub fn dispute(&mut self, tx: TxId) -> Result<(), Error> {
-    //     if self.locked {
-    //         return Ok(());
-    //     }
-    //     // TODO
-    //     Ok(())
-    // }
+    pub fn dispute(&mut self, _tx: TxId) -> Result<(), Error> {
+        if self.locked {
+            return Ok(());
+        }
+        // TODO
+        Ok(())
+    }
 
-    // pub fn resolve(&mut self, _tx: TxId) -> Result<(), Error> {
-    //     if self.locked {
-    //         return Ok(());
-    //     }
-    //     // TODO
-    //     Ok(())
-    // }
+    pub fn resolve(&mut self, _tx: TxId) -> Result<(), Error> {
+        if self.locked {
+            return Ok(());
+        }
+        // TODO
+        Ok(())
+    }
 
-    // pub fn chargeback(&mut self, _tx: TxId) -> Result<(), Error> {
-    //     if self.locked {
-    //         return Ok(());
-    //     }
-    //     // TODO
-    //     Ok(())
-    // }
+    pub fn chargeback(&mut self, _tx: TxId) -> Result<(), Error> {
+        if self.locked {
+            return Ok(());
+        }
+        // TODO
+        Ok(())
+    }
 }
 
 #[test]
@@ -172,5 +172,24 @@ fn test_deposit_withdraw() -> Result<(), Error> {
         Some(&TranRecord::new(RecordType::Withdrawal, dec!(3.0)))
     );
 
+    // withdraw all remaining funds
+    balance.withdraw(TxId(7), dec!(7.0))?;
+    assert_eq!(balance.available, dec!(0.0));
+    assert_eq!(balance.held, dec!(0));
+    assert_eq!(balance.locked, false);
+    assert_eq!(
+        balance.trans.get(&TxId(7)),
+        Some(&TranRecord::new(RecordType::Withdrawal, dec!(7.0)))
+    );
+
     Ok(())
 }
+
+// #[test]
+// fn test_sizeof() {
+//     // Uncomment this to get estimate of transaction storage cost
+//     // its commented by default to avoid environment dependent failures if underlying crates update or rustc struct layout changes
+//     use std::mem::size_of;
+//     use std::collections::hash_map::Entry;
+//     assert_eq!(32, size_of::<Entry<TxId, TranRecord>>());
+// }

@@ -7,6 +7,8 @@ Simple example payments engine.
 
 * Transaction amount limit to 4 decimal places is strict. Further digits will be treated as invalid input
 
+* The underlying rust_decimal library will error if it overflows for transactions or balances.  If due to hyper inflation more digits are needed consider using bigdecimal or other arbitary precision crate
+
 * Transaction amounts cannot be negative, negative amounts will be treated as invalid input
 
 * Transaction amounts are not expected for dispute, resolve, chargeback. It present they will be treated as invalid input
@@ -22,3 +24,26 @@ Simple example payments engine.
 * Duplicate transaction ids for deposits or withdrawals are invalid input
 
 * Unknown transaction ids for dispute, resolve, chargebacks are errors from the payment partner and will be ignored
+
+## Design choices
+
+Using integer math for precision as binary floating point can't represent numbers like 0.0001 exactly. 
+
+Each shard handles multiple clients and can use regular unlocked maps as no other task is handling that shard of clients.
+
+For simplicity using anyhow::Error and bail!. In this was a real payment library would likely use thiserror::Error instead.
+
+Using storage of transactions that could be reverse in memory for simplicity vs attempting something like LevelDB.
+
+## Efficiency
+
+Valid Transactions have no deadline for reversal, and thus need to stored unaggregated in the `balance::Balance::trans` `balance::TranRecord`s for the duration of the run. Each on has have approximate size of `(hash_map::Entry<ids::TxId, balance::TranRecord>)` which is around 32 bytes on x64_64 linux and current rust stable.  Given max 2^32 transactions, this means lower bound when run with max possible transactions for on memory usage will be 128GiB.
+
+Invalid Transactions should take no TranRecord storage, although they may take up space in io buffers and queues.
+
+If insufficient RAM is present but enough Swap is present then performance should be similar to an explicily memmap'd approach.  
+
+In a real system one may have a larger TransactionId and use something like sharded LevelDB or a distributed store to keep per process size under control.
+
+In a real system with a clock and transaction timestampds, if some clients or payment partners had a time limit on reversal then the solution could be made more efficient by pruning stored state once clock advances past the deadline(s) for retention for a balance.
+

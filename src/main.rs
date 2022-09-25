@@ -1,6 +1,7 @@
 use clap::Parser;
 
 mod balance;
+mod clients;
 mod ids;
 mod transaction;
 
