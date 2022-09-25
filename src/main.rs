@@ -9,6 +9,8 @@ mod clients;
 mod ids;
 mod transaction;
 
+use crate::transaction::TranType;
+
 #[derive(Parser)]
 #[clap(name = "paytoy", about = "Simple example payments engine")]
 struct Args {
@@ -35,9 +37,19 @@ fn main() -> Result<(), Error> {
         }
     }
 
+    let mut seen_tx = HashSet::new();
     for result in rdr.deserialize() {
         let t: transaction::Transaction = result?;
-        clients.process(t)?;
+        match t.tran_type {
+            TranType::Deposit | TranType::Withdrawal => {
+                if seen_tx.contains(&t.tx) {
+                    bail!("Reused transaction {}", t.tx.id());
+                }
+                seen_tx.insert(t.tx);
+            }
+            _ => (),
+        }
+        clients.process(t)?
     }
 
     print_headers();
