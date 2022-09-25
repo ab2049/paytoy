@@ -1,0 +1,4 @@
+Error: CSV deserialize error: record 4 (line: 5, byte: 78): too many decimal places: 1.50005
+
+Caused by:
+    too many decimal places: 1.50005
