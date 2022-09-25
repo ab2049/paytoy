@@ -75,28 +75,81 @@ impl Balance {
         Ok(())
     }
 
-    pub fn dispute(&mut self, _tx: TxId) -> Result<(), Error> {
+    pub fn dispute(&mut self, tx: TxId) -> Result<(), Error> {
         if self.locked {
             return Ok(());
         }
-        // TODO
-        Ok(())
+        let record = self.trans.get_mut(&tx);
+        if let Some(record) = record {
+            Ok(match (record.rec_type, record.disputed) {
+                (RecordType::Deposit, false) => {
+                    self.available -= record.amount;
+                    self.held += record.amount;
+                    record.disputed = true;
+                }
+                (RecordType::Withdrawal, false) => {
+                    self.held -= record.amount;
+                    record.disputed = true;
+                }
+                // Already disputed
+                (_, true) => (),
+            })
+        } else {
+            // Unknown TxId, assume payment partner error
+            Ok(())
+        }
     }
 
-    pub fn resolve(&mut self, _tx: TxId) -> Result<(), Error> {
+    pub fn resolve(&mut self, tx: TxId) -> Result<(), Error> {
         if self.locked {
             return Ok(());
         }
-        // TODO
-        Ok(())
+        let record = self.trans.get_mut(&tx);
+        if let Some(record) = record {
+            Ok(match (record.rec_type, record.disputed) {
+                (RecordType::Deposit, true) => {
+                    self.available += record.amount;
+                    self.held -= record.amount;
+                    record.disputed = false;
+                }
+                (RecordType::Withdrawal, true) => {
+                    self.held += record.amount;
+                    record.disputed = false;
+                }
+                // Not disputed, ignore
+                (_, false) => (),
+            })
+        } else {
+            // Unknown TxId, assume payment partner error
+            Ok(())
+        }
     }
 
-    pub fn chargeback(&mut self, _tx: TxId) -> Result<(), Error> {
+    pub fn chargeback(&mut self, tx: TxId) -> Result<(), Error> {
         if self.locked {
             return Ok(());
         }
-        // TODO
-        Ok(())
+        let record = self.trans.get_mut(&tx);
+        if let Some(record) = record {
+            Ok(match (record.rec_type, record.disputed) {
+                (RecordType::Deposit, true) => {
+                    self.held -= record.amount;
+                    record.disputed = false;
+                    self.locked = true;
+                }
+                (RecordType::Withdrawal, true) => {
+                    self.available += record.amount;
+                    self.held += record.amount;
+                    record.disputed = false;
+                    self.locked = true;
+                }
+                // Not disputed, ignore
+                (_, false) => (),
+            })
+        } else {
+            // Unknown TxId, assume payment partner error
+            Ok(())
+        }
     }
 }
 
@@ -112,6 +165,142 @@ impl Display for Balance {
         )
     }
 }
+
+#[test]
+fn test_dispute_deposit() -> Result<(), Error> {
+    use rust_decimal_macros::dec;
+    let mut balance = Balance::default();
+
+    balance.deposit(TxId(1), dec!(10.0))?;
+    balance.withdraw(TxId(2), dec!(7.0))?;
+    assert_eq!(balance.available, dec!(3.0));
+    assert_eq!(balance.held, dec!(0.0));
+    assert_eq!(balance.locked, false);
+
+    balance.dispute(TxId(1))?;
+    assert_eq!(balance.available, dec!(-7.0));
+    assert_eq!(balance.held, dec!(10.0));
+    assert_eq!(balance.locked, false);
+
+    balance.resolve(TxId(1))?;
+    assert_eq!(balance.available, dec!(3.0));
+    assert_eq!(balance.held, dec!(0.0));
+    assert_eq!(balance.locked, false);
+
+    // second resolve should have no effect
+    balance.resolve(TxId(1))?;
+    assert_eq!(balance.available, dec!(3.0));
+    assert_eq!(balance.held, dec!(0.0));
+    assert_eq!(balance.locked, false);
+
+    Ok(())
+}
+
+#[test]
+fn test_dispute_withdrawal() -> Result<(), Error> {
+    use rust_decimal_macros::dec;
+    let mut balance = Balance::default();
+
+    balance.deposit(TxId(1), dec!(10.0))?;
+    assert_eq!(balance.available, dec!(10.0));
+    assert_eq!(balance.held, dec!(0.0));
+    assert_eq!(balance.locked, false);
+
+    // resolving an undisputed transaction should have no effect
+    balance.resolve(TxId(2))?;
+    assert_eq!(balance.available, dec!(10.0));
+    assert_eq!(balance.held, dec!(0.0));
+    assert_eq!(balance.locked, false);
+
+    balance.withdraw(TxId(2), dec!(7.0))?;
+    assert_eq!(balance.available, dec!(3.0));
+    assert_eq!(balance.held, dec!(0.0));
+    assert_eq!(balance.locked, false);
+
+    balance.dispute(TxId(2))?;
+    assert_eq!(balance.available, dec!(3.0));
+    assert_eq!(balance.held, dec!(-7.0));
+    assert_eq!(balance.locked, false);
+
+    balance.resolve(TxId(2))?;
+    assert_eq!(balance.available, dec!(3.0));
+    assert_eq!(balance.held, dec!(0.0));
+    assert_eq!(balance.locked, false);
+
+    // second resolve should have no effect
+    balance.resolve(TxId(2))?;
+    assert_eq!(balance.available, dec!(3.0));
+    assert_eq!(balance.held, dec!(0.0));
+    assert_eq!(balance.locked, false);
+
+    Ok(())
+}
+
+
+#[test]
+fn test_chargeback_deposit() -> Result<(), Error> {
+    use rust_decimal_macros::dec;
+    let mut balance = Balance::default();
+
+    balance.deposit(TxId(1), dec!(10.0))?;
+    balance.withdraw(TxId(2), dec!(7.0))?;
+    assert_eq!(balance.available, dec!(3.0));
+    assert_eq!(balance.held, dec!(0.0));
+    assert_eq!(balance.locked, false);
+
+    balance.dispute(TxId(1))?;
+    assert_eq!(balance.available, dec!(-7.0));
+    assert_eq!(balance.held, dec!(10.0));
+    assert_eq!(balance.locked, false);
+
+    balance.chargeback(TxId(1))?;
+    assert_eq!(balance.available, dec!(-7.0));
+    assert_eq!(balance.held, dec!(0.0));
+    assert_eq!(balance.locked, true);
+
+    // second chargeback should have no effect
+    balance.chargeback(TxId(1))?;
+    assert_eq!(balance.available, dec!(-7.0));
+    assert_eq!(balance.held, dec!(0.0));
+    assert_eq!(balance.locked, true);
+
+    Ok(())
+}
+
+#[test]
+fn test_chargeback_withdrawal() -> Result<(), Error> {
+    use rust_decimal_macros::dec;
+    let mut balance = Balance::default();
+
+    balance.deposit(TxId(1), dec!(10.0))?;
+    assert_eq!(balance.available, dec!(10.0));
+    assert_eq!(balance.held, dec!(0.0));
+    assert_eq!(balance.locked, false);
+
+    balance.withdraw(TxId(2), dec!(7.0))?;
+    assert_eq!(balance.available, dec!(3.0));
+    assert_eq!(balance.held, dec!(0.0));
+    assert_eq!(balance.locked, false);
+
+    balance.dispute(TxId(2))?;
+    assert_eq!(balance.available, dec!(3.0));
+    assert_eq!(balance.held, dec!(-7.0));
+    assert_eq!(balance.locked, false);
+
+    balance.chargeback(TxId(2))?;
+    assert_eq!(balance.available, dec!(10.0));
+    assert_eq!(balance.held, dec!(0.0));
+    assert_eq!(balance.locked, true);
+
+    // second chargeback should have no effect
+    balance.chargeback(TxId(2))?;
+    assert_eq!(balance.available, dec!(10.0));
+    assert_eq!(balance.held, dec!(0.0));
+    assert_eq!(balance.locked, true);
+
+    Ok(())
+}
+
 
 #[test]
 fn test_deposit_withdraw() -> Result<(), Error> {

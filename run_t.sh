@@ -45,6 +45,7 @@ fi
 
 if [[ -s "$ERROR" && -z "$EXPECTED_ERROR" ]]; then
     echo "$TEST unexpectedly has errors in $ERROR" 2>&1
+    cat "$ERROR" 1>&2
     exit 1
 fi
 
