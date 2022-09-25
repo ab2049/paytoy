@@ -4,4 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+anyhow = "1.0.65"
 clap = { version = "3.2.22", features = ["derive"] } 
+csv = "1.1.6"
+serde = { version = "1.0.145", features = ["derive"] } 
+rust_decimal = { version = "1.26", features = ["serde-with-str"] }
+rust_decimal_macros = "1.26"
