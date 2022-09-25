@@ -2,6 +2,7 @@ use anyhow::{bail, Error};
 use rust_decimal::Decimal;
 
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 
 use crate::ids::TxId;
 
@@ -96,6 +97,19 @@ impl Balance {
         }
         // TODO
         Ok(())
+    }
+}
+
+impl Display for Balance {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{},{},{},{}",
+            self.available,
+            self.held,
+            self.available + self.held,
+            self.locked
+        )
     }
 }
 
