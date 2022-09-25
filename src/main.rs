@@ -1,5 +1,8 @@
 use clap::Parser;
 
+mod ids;
+mod transaction;
+
 #[derive(Parser)]
 #[clap(name = "paytoy", about = "Simple example payments engine")]
 struct Args {
