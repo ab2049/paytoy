@@ -13,3 +13,9 @@ impl ClientId {
 /// The input transaction id
 #[derive(Clone, Copy, Debug, Deserialize, Hash, Eq, PartialEq)]
 pub struct TxId(pub u32);
+
+impl TxId {
+    pub fn id(&self) -> u32 {
+        self.0
+    }
+}
