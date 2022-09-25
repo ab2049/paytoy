@@ -39,6 +39,8 @@ fn try_from_str(s: &str) -> Result<Option<Decimal>, Error> {
         let d = Decimal::from_str_exact(s)?;
         if d.is_sign_negative() {
             bail!("negative amount: {}", s);
+        } else if d == Decimal::ZERO {
+            bail!("zero amount: {}", s);
         } else if d.fract().scale() > MAX_DP {
             bail!("too many decimal places: {}", s);
         }
@@ -66,6 +68,7 @@ impl<'de> Deserialize<'de> for Transaction {
         D: Deserializer<'de>,
     {
         #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
         struct Inner {
             pub client: ClientId,
             pub tx: TxId,
@@ -108,6 +111,8 @@ fn test_from_str() -> Result<(), Error> {
     assert_eq!(try_from_str("1.1")?, Some(dec!(1.1)));
     assert_eq!(try_from_str(" 1.1 ")?, Some(dec!(1.1)));
 
+    assert!(try_from_str("0.0").is_err());
+    assert!(try_from_str("0").is_err());
     assert!(try_from_str("0.23456").is_err());
     assert!(try_from_str("0.234.56").is_err());
     assert!(try_from_str("0.2345.6").is_err());
@@ -123,7 +128,7 @@ fn test_from_str() -> Result<(), Error> {
 }
 
 #[test]
-fn test_deserialize_header_order() -> Result<(), Error> {
+fn test_deserialize_with_amount() -> Result<(), Error> {
     use csv::StringRecord;
     use rust_decimal_macros::dec;
 
@@ -139,16 +144,28 @@ fn test_deserialize_header_order() -> Result<(), Error> {
         .deserialize::<Transaction>(Some(&h))?;
     assert_eq!(t, &expected);
 
+    // Check header order doesn't matter
     let h = StringRecord::from(vec!["client", "type", "tx", "amount"]);
     let t = &StringRecord::from_iter("1,deposit,2,1.1".split(","))
         .deserialize::<Transaction>(Some(&h))?;
     assert_eq!(t, &expected);
 
+    // Check amount appears ok for withdrawal
+    let t = &StringRecord::from_iter("1,withdrawal,2,1.1".split(","))
+        .deserialize::<Transaction>(Some(&h))?;
+    assert_eq!(
+        t,
+        &Transaction {
+            tran_type: TranType::Withdrawal,
+            ..expected
+        }
+    );
+
     Ok(())
 }
 
 #[test]
-fn test_deserialize_dispute() -> Result<(), Error> {
+fn test_deserialize_no_amount() -> Result<(), Error> {
     use csv::StringRecord;
 
     let expected = Transaction {
@@ -164,8 +181,24 @@ fn test_deserialize_dispute() -> Result<(), Error> {
     assert_eq!(t, &expected);
 
     let t =
-        &StringRecord::from_iter("resolve,1,2,10".split(",")).deserialize::<Transaction>(Some(&h));
-    assert!(t.is_err());
+        &StringRecord::from_iter("resolve,1,2,".split(",")).deserialize::<Transaction>(Some(&h))?;
+    assert_eq!(
+        t,
+        &Transaction {
+            tran_type: TranType::Resolve,
+            ..expected
+        }
+    );
+
+    let t = &StringRecord::from_iter("chargeback,1,2,".split(","))
+        .deserialize::<Transaction>(Some(&h))?;
+    assert_eq!(
+        t,
+        &Transaction {
+            tran_type: TranType::Chargeback,
+            ..expected
+        }
+    );
 
     Ok(())
 }
@@ -173,6 +206,12 @@ fn test_deserialize_dispute() -> Result<(), Error> {
 #[test]
 fn test_deserialize_err() -> Result<(), Error> {
     use csv::StringRecord;
+
+    let h = StringRecord::from(vec!["type", "client", "tx", "amount", "random"]);
+
+    assert!(&StringRecord::from_iter("deposit,1,2,1.1,1".split(","))
+        .deserialize::<Transaction>(Some(&h))
+        .is_err());
 
     let h = StringRecord::from(vec!["type", "client", "tx", "amount"]);
 
