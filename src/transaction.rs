@@ -8,7 +8,7 @@ use crate::ids::{ClientId, TxId};
 const MAX_DP: u32 = 4;
 
 /// types of transaction we can process
-#[derive(Deserialize, Debug, PartialEq, Clone, Copy)]
+#[derive(Deserialize, Debug, Eq, PartialEq, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
 pub enum TranType {
     Deposit,
@@ -19,7 +19,7 @@ pub enum TranType {
 }
 
 /// The input transaction
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Transaction {
     pub tran_type: TranType,
     pub client: ClientId,
@@ -44,7 +44,7 @@ fn try_from_str(s: &str) -> Result<Option<Decimal>, Error> {
     Ok(if s.is_empty() {
         None
     } else {
-        if s.chars().next() == Some('.') {
+        if s.starts_with('.') {
             bail!("leading decimal point not allowed: {}", s);
         }
         let d = Decimal::from_str_exact(s)?;

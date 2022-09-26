@@ -40,7 +40,7 @@ async fn process_csv(input: String) -> Result<Clients, Error> {
         }
     }
 
-    // size number of shards based on cpu count 
+    // size number of shards based on cpu count
     let num_shards: u16 = min(num_cpus::get(), u16::MAX as usize) as u16;
 
     let mut shard_futs = Vec::with_capacity(num_shards.into());

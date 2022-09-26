@@ -68,6 +68,8 @@ Uses the type system (e.g. newtypes, enums) to detect problems at compile time a
 
 Single threaded form is simpler, and currently more performant.  Pretty easy to remove tokio changes if desired as they are contained to main (or just go back a commit from their introduction)
 
+Code is currently clippy clean, with lint job running it on the linux github actions.  Cargo audit also run from lint job to check for known vulns.
+
 ## Extensions
 
 I didn't have a chance to profile cpu or memory so that would be the first thing! `perf` and [flamegraphs](https://www.brendangregg.com/FlameGraphs/cpuflamegraphs.html) would be an interesting starting point for CPU, for memory [jemalloc](https://jemalloc.net/) heap profiles would confirm if `TranRecord` is indeed main head user. Assuming profiling showed deserialization was a significant cpu usage one could have a pool of deserialization workers in a similar manner to the client shard workers.  Using [csv_async](https://crates.io/crates/csv-async) crate would be one way to make this a bit easier. 
