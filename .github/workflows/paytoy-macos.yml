@@ -1,0 +1,31 @@
+name: Paytoy MacOS
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+
+jobs:
+  build:
+    runs-on: macOS-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install Rust Stable
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        default: true
+        profile: minimal
+    - name: Cargo build
+      run: cargo build
+    - name: Cargo test
+      run: cargo test
+    - name: Check harness shows error
+      run: ./run_suite.sh harness_error || true
+    - name: Check harness shows pass
+      run: ./run_suite.sh harness_pass
+    - name: Integration test
+      run: ./run_suite.sh integration
