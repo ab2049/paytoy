@@ -31,3 +31,21 @@ jobs:
       run: ./run_suite.sh harness_pass
     - name: Integration test
       run: ./run_suite.sh integration
+
+  lint:
+    runs-on: ubuntu-22.04
+    needs: build
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust Stable
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          default: true
+          profile: minimal
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+      - name: Audit
+        run: cargo audit
+      - name: Clippy
+        run: cargo clippy

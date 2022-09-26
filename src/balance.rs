@@ -7,14 +7,14 @@ use std::fmt::{Display, Formatter};
 use crate::ids::TxId;
 
 /// Things we need to record incase they are disputed
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RecordType {
     Deposit,
     Withdrawal,
 }
 
 /// Record of a transaction in case of dispute
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct TranRecord {
     rec_type: RecordType,
     amount: Decimal,
@@ -81,7 +81,7 @@ impl Balance {
         }
         let record = self.trans.get_mut(&tx);
         if let Some(record) = record {
-            Ok(match (record.rec_type, record.disputed) {
+            match (record.rec_type, record.disputed) {
                 (RecordType::Deposit, false) => {
                     self.available -= record.amount;
                     self.held += record.amount;
@@ -93,7 +93,8 @@ impl Balance {
                 }
                 // Already disputed
                 (_, true) => (),
-            })
+            }
+            Ok(())
         } else {
             // Unknown TxId, assume payment partner error
             Ok(())
@@ -106,7 +107,7 @@ impl Balance {
         }
         let record = self.trans.get_mut(&tx);
         if let Some(record) = record {
-            Ok(match (record.rec_type, record.disputed) {
+            match (record.rec_type, record.disputed) {
                 (RecordType::Deposit, true) => {
                     self.available += record.amount;
                     self.held -= record.amount;
@@ -118,7 +119,8 @@ impl Balance {
                 }
                 // Not disputed, ignore
                 (_, false) => (),
-            })
+            }
+            Ok(())
         } else {
             // Unknown TxId, assume payment partner error
             Ok(())
@@ -131,7 +133,7 @@ impl Balance {
         }
         let record = self.trans.get_mut(&tx);
         if let Some(record) = record {
-            Ok(match (record.rec_type, record.disputed) {
+            match (record.rec_type, record.disputed) {
                 (RecordType::Deposit, true) => {
                     self.held -= record.amount;
                     record.disputed = false;
@@ -145,7 +147,8 @@ impl Balance {
                 }
                 // Not disputed, ignore
                 (_, false) => (),
-            })
+            }
+            Ok(())
         } else {
             // Unknown TxId, assume payment partner error
             Ok(())
