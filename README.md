@@ -40,7 +40,11 @@ Using storage of transactions that could be reverse in memory for simplicity vs 
 
 Check the dependencies for known vulns with cargo-audit.  None at time of writing
 
-Errors are checked.  Errors cause the program to exit without outputing new client balances
+Errors are checked.  Errors cause the program to exit without outputing new client balances. 
+
+## Availability
+
+Being strict on input validation and Erroring means that a single bad payment partner sending bad data continually could DoS for others in the same file, workaround for now if that was a concern would be pass in separate CSVs in separate runs from separate partners.
 
 ## Efficiency
 
@@ -52,12 +56,24 @@ If insufficient RAM is present but enough Swap is present then performance shoul
 
 In a real system one may have a larger TransactionId and use something like sharded LevelDB or a distributed store to keep per process size under control.
 
-In a real system with a clock and transaction timestampds, if some clients or payment partners had a time limit on reversal then the solution could be made more efficient by pruning stored state once clock advances past the deadline(s) for retention for a balance.
+In a real system with a clock and transaction timestamps, *if* some clients or payment partners had a time limit on reversal then the solution could be made more efficient by pruning stored state once clock advances past the deadline(s) for retention for a balance.
+
+Using Tokio to spawn shards currently makes the CPU performance worse.  Profiling would likely improve that. 
 
 ## Maintainability
 
-Automated tests,  easy to add new test cases if a regression is found.
+Automated unit and integration tests, which run locally and from [Github Actions](.github/workflows/paytoy-linux.yml]). Easy to add new test cases if a regression is found.
 
-Uses the type system (e.g. newtypes, enums) to detect problems at compile time and reduce possible coding errors by maintainers.
+Uses the type system (e.g. newtypes, enums) to detect problems at compile time and reduce possible coding errors by maintainers. Could be taken further (see Extensions section)
 
-Single threaded form is simpler, pretty easy to remove tokio changes if desired as they are contained to main
+Single threaded form is simpler, and currently more performant.  Pretty easy to remove tokio changes if desired as they are contained to main (or just go back a commit from their introduction)
+
+## Extensions
+
+I didn't have a chance to profile cpu or memory so that would be the first thing! `perf` and [flamegraphs](https://www.brendangregg.com/FlameGraphs/cpuflamegraphs.html) would be an interesting starting point for CPU, for memory [jemalloc](https://jemalloc.net/) heap profiles would confirm if `TranRecord` is indeed main head user.Assuming profiling showed deserialization was a significant cpu usage one could have a pool of deserialization threads in a similar manner to the client shards.  Using [csv_async](https://crates.io/crates/csv-async) crate would be one way to make this a bit easier. 
+
+More test data in the test suites. I built in tests in each commit but there is a lot more that could be covered.
+
+LevelDB or other storage vs in-memory maps might be interesting to try.
+
+One could extend the type safety by having `Transaction` as an `enum` of the actions where the dispute/resolve/chargeback variants don't even have an amount field,  the serde inner deserialization pattern in [src/transaction.rs](src/transaction.rs) could be used for the transformation.
