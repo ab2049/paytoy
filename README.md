@@ -70,7 +70,7 @@ Single threaded form is simpler, and currently more performant.  Pretty easy to 
 
 ## Extensions
 
-I didn't have a chance to profile cpu or memory so that would be the first thing! `perf` and [flamegraphs](https://www.brendangregg.com/FlameGraphs/cpuflamegraphs.html) would be an interesting starting point for CPU, for memory [jemalloc](https://jemalloc.net/) heap profiles would confirm if `TranRecord` is indeed main head user.Assuming profiling showed deserialization was a significant cpu usage one could have a pool of deserialization threads in a similar manner to the client shards.  Using [csv_async](https://crates.io/crates/csv-async) crate would be one way to make this a bit easier. 
+I didn't have a chance to profile cpu or memory so that would be the first thing! `perf` and [flamegraphs](https://www.brendangregg.com/FlameGraphs/cpuflamegraphs.html) would be an interesting starting point for CPU, for memory [jemalloc](https://jemalloc.net/) heap profiles would confirm if `TranRecord` is indeed main head user. Assuming profiling showed deserialization was a significant cpu usage one could have a pool of deserialization workers in a similar manner to the client shard workers.  Using [csv_async](https://crates.io/crates/csv-async) crate would be one way to make this a bit easier. 
 
 More test data in the test suites. I built in tests in each commit but there is a lot more that could be covered.
 
